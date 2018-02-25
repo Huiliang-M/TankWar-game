@@ -18,3 +18,15 @@ Download the file to the local then create tankwar scheme then create tables
 
 Then use node app to run the app. Go to the localhost:3000 to test the app
 
+
+# Result 
+
+## Lobby
+<br/>
+<img = "550" src = "https://github.com/Huiliang-M/TankWar-game/blob/master/picture1.png"/>
+<br/>
+
+### Game Room
+<br/>
+<img = "550" src = "https://github.com/Huiliang-M/TankWar-game/blob/master/picture2.png"/>
+<br/>
