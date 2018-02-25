@@ -1,0 +1,242 @@
+
+ 
+ <h2 class="page-header">Welcome to the Tank War</h2>
+<body>  
+<div class="container col-lg-9">
+  <table class="table table-fixed">
+    <thead>
+      <tr>
+        <th class="col-xs-4">GameName</th>
+        <th class="col-xs-4">game member</th>
+      </tr>
+    </thead>
+   
+  
+       {{#games}}   
+         <form  method="post" action='/games/{{game_name}}' onsubmit="checkform(event)" >
+           <tbody  >
+            <tr>
+              <td class="col-lg-4.5"> <button type="submit" class="btn btn-primary" >{{game_name}}</button></td>
+              <td class="col-lg-4.5">{{game_member}}/2</td>
+              <input type="hidden" class="form-control" name="game_name" value="{{game_name}}" /> 
+               <input type="hidden" class="form-control" name="game_member" value="{{game_member}}" /> 
+              <input type="hidden" class='username' class="form-control" name="username" value="" ></input>
+            </tr>
+          </tbody>
+        </form>
+      {{/games}}
+    
+  </table>
+  
+</div>
+ 
+   
+        <div class="col-lg-3 frame  pull-right">
+            <ul id="chat"></ul>
+            <div>
+                <div class="msj-rta macro" style="margin:auto" >                        
+                    <form id="chat-form" class="text text-r" style="background:whitesmoke !important">
+                        <input id="chat-input" class="mytext" placeholder="Say something "/>
+
+                    </form>
+
+                </div>
+            </div>
+        </div>        
+    </body>
+
+     <button type="button" class="btn btn-primary " data-toggle="modal" data-target="#formModal">Create game</button>
+
+           <!-- Modal -->
+    <div class="modal fade" id="formModal" tabindex="-1" role="dialog" aria-labelledby="formModalLabel">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="post" action="/games">
+              <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">Create game</h4>
+              </div>
+              <div class="modal-body">
+                     
+                         <div class="form-group">
+                         <label> game Name</label>
+                         <input type="text" class="form-control" name="game_name" />
+                         </div>
+                         <input type="hidden" class="form-control" name="username" value="{{user.username}}" />
+                     
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <input type="submit" class="btn btn-primary" value="save">
+              </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+
+<script>
+  function checkform(evt)    {  
+  console.log(" check form");      
+        if(game.game_member=="2"){
+           alert("The game is full");
+           return false;
+        }
+
+  }
+
+
+   var socket = io();
+   var chatText = document.getElementById('chat');
+   var chatInput = document.getElementById('chat-input');
+   var chatForm = document.getElementById('chat-form');
+
+   var usernames = document.getElementsByClassName("username");
+   
+   for(var i=0; i<usernames.length; i++) {
+     usernames[i].value='{{user.username}}';
+     console.log(  usernames[i].value);
+    }
+ 
+      
+        socket.on('addToChat',function(data){
+               insertChat("me",data);
+            });
+           
+         chatForm.onsubmit = function(e){
+                e.preventDefault();
+                 socket.emit('sendMsgToServer',"{{user.username}}"+" : "+chatInput.value);
+                 console.log("send input to server "+chatInput.value);
+                chatInput.value = '';      
+            };
+  
+  
+
+  console.log("chat now");
+  var me = {};
+    function formatAMPM(date) {
+        var hours = date.getHours();
+        var minutes = date.getMinutes();
+        var ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        minutes = minutes < 10 ? '0'+minutes : minutes;
+        var strTime = hours + ':' + minutes + ' ' + ampm;
+        return strTime;
+    }            
+
+//-- No use time. It is a javaScript effect.
+    function insertChat(who, text, time = 0){
+        var control = "";
+        var date = formatAMPM(new Date());
+        
+        var chunks = [];
+
+        //split text into chunks
+      for (var i = 0, charsLength = text.length; i < charsLength; i += 15) {
+          chunks.push(text.substring(i, i + 15));
+        }
+
+        console.log(chunks[0]);
+
+    var last="";
+   
+        
+        control = '<li style="width:100%">' +
+                        '<div class="msj macro">' +
+                            '<div class="text text-l">' 
+                            ;   
+           last=                  '<p><small>'+date+'</small></p>' +
+                            '</div>' +
+                        '</div>' +
+                    '</li>';                    
+    setTimeout(
+        function(){     
+           var ms="";
+           ms+=control;                   
+             for( var i=0;i<chunks.length;i++){
+              ms+='<p>'+chunks[i]+'</p>';
+             }
+              ms+=last;
+             $("#chat").append(ms);
+        }, time);
+    
+} 
+
+
+
+
+var P = function(initPack){
+    var self = {};
+    self.id = initPack.id;
+    self.number = initPack.number;
+    self.x = initPack.x;
+    self.y = initPack.y;
+    self.hp = initPack.hp;
+    self.hpMax = initPack.hpMax;
+    self.score = initPack.score;
+    self.map = initPack.map;
+    
+    self.draw = function(){ 
+      if(Player.list[selfId].map !== self.map)
+        return;
+      var x = self.x - Player.list[selfId].x + WIDTH/2;
+      var y = self.y - Player.list[selfId].y + HEIGHT/2;
+      
+      var hpWidth = 30 * self.hp / self.hpMax;
+      ctx.fillStyle = 'red';
+      ctx.fillRect(x - hpWidth/2,y - 40,hpWidth,4);
+      
+      var width = Img.player.width*2;
+      var height = Img.player.height*2;
+      
+      
+      ctx.drawImage(Img.player,
+        0,0,Img.player.width,Img.player.height,
+        x-width/2,y-height/2,width,height);
+      
+      //ctx.fillText(self.score,self.x,self.y-60);
+    }
+    
+    P.list[self.id] = self;
+    
+    
+    return self;
+  }
+  P.list = {};
+
+  socket.on('update',function(data){
+    console.log('update data now');
+    //{ player : [{id:123,x:0,y:0},{id:1,x:0,y:0}], bullet: []}
+    for(var i = 0 ; i < data.player.length; i++){
+      var pack = data.player[i];
+      var p = P.list[pack.id];
+      if(p){
+        if(pack.x !== undefined){
+          p.x = pack.x;
+          console.log(p.x+ " p.x" );
+        }
+
+        if(pack.y !== undefined)
+          p.y = pack.y;
+        if(pack.hp !== undefined)
+          p.hp = pack.hp;
+        if(pack.score !== undefined)
+          p.score = pack.score;
+        if(pack.map !== undefined)
+          p.map = pack.map;
+      }
+    }
+    for(var i = 0 ; i < data.bullet.length; i++){
+      var pack = data.bullet[i];
+      var b = Bullet.list[data.bullet[i].id];
+      if(b){
+        if(pack.x !== undefined)
+          b.x = pack.x;
+        if(pack.y !== undefined)
+          b.y = pack.y;
+      }
+    }
+  });
+</script>
+

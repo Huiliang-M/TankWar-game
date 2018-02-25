@@ -1,0 +1,286 @@
+
+<style type="text/css">
+#canvasDiv canvas{position:absolute;}
+#canvasDiv{ left:30%;}
+</style>
+
+ <h2 class="page-header">Game: {{game.game_name}}</h2>
+ <div class=col-lg-9>
+    <button class="btn btn-default col-lg-5 col-lg-offset-2"  id="prepare" onclick="myFunction()">Prepare</button>
+ </div>
+<div class="container col-lg-7">
+  <head><h3>    Rules：↑ W ↓ S ← A → D , J for shoot</h3></head>
+  <div class="main clearfix col-lg-7">
+    <div id="canvasDiv" onclick="getfocus()" >
+      <canvas id="wallCanvas" ></canvas> 
+      <canvas id="tankCanvas" ></canvas>
+      <canvas id="grassCanvas" ></canvas>
+      <canvas id="overCanvas" ></canvas> 
+      <canvas id="stageCanvas" ></canvas>
+    </div>
+  </div>
+</div>
+
+
+
+ <div class="col-lg-4 frame  pull-right" onclick="unfocus()" >
+            <ul id="chat"></ul>
+            <div>
+                <div class="msj-rta macro" style="margin:auto">                        
+                    <form id="chat-form" class="text text-r" style="background:whitesmoke !important">
+                  <input id="chat-input" class="mytext" placeholder="Type a message" />
+
+                    </form>
+
+                </div>
+            </div>
+        </div>        
+    </body>
+
+ 
+
+
+ <script>
+
+
+   var socket = io();
+   var chatText = document.getElementById('chat');
+   var chatInput = document.getElementById('chat-input');
+   var chatForm = document.getElementById('chat-form');
+   socket.username="{{user.username}}";
+   console.log('send info');
+   socket.emit('info',{username:"{{user.username}}",game_name:"{{game.game_name}}",game_member:"{{game.game_member}}"});
+   socket.emit("sendMsgToServer_game","<p>{{user.username}} enter the game </p>");
+   
+   function myFunction() {
+      if( document.getElementById('prepare').innerHTML=="Prepare"){
+        console.log('prepare ');
+          socket.emit('prepare',{prepare:true,current_user:'{{user.username}}',game_name:"{{game.game_name}}"});
+          socket.emit("sendMsgToServer_game","<p>{{user.username}} is ready now</p>");
+          document.getElementById('prepare').innerHTML="Ready"; 
+      }else{
+          socket.emit('prepare',{prepare:false,current_user:'{{user.username}}' });
+          socket.emit("sendMsgToServer_game","<p>{{user.username}} is not ready yet</p>");
+          document.getElementById('prepare').innerHTML="Prepare"; 
+        }
+      }
+      socket.on('addToChat_game',function(data){
+               insertChat("me",data);
+      });
+           
+      chatForm.onsubmit = function(e){
+            e.preventDefault();
+             socket.emit('sendMsgToServer_game',"{{user.username}}"+" : "+chatInput.value);
+             console.log("send input to server "+chatInput.value);
+            chatInput.value = '';      
+      };
+  
+   
+ 
+
+    //console.log("chat now");
+    var me = {};
+    function formatAMPM(date) {
+        var hours = date.getHours();
+        var minutes = date.getMinutes();
+        var ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        minutes = minutes < 10 ? '0'+minutes : minutes;
+        var strTime = hours + ':' + minutes + ' ' + ampm;
+        return strTime;
+    }            
+
+//-- No use time. It is a javaScript effect.
+    function insertChat(who, text, time = 0){
+        var control = "";
+        var date = formatAMPM(new Date());
+        
+        var chunks = [];
+
+        //split text into chunks
+      for (var i = 0, charsLength = text.length; i < charsLength; i += 30) {
+          chunks.push(text.substring(i, i + 30));
+        }
+
+
+    var last="";
+   
+        
+        control = '<li style="width:100%">' +
+                        '<div class="msj macro">' +
+                            '<div class="text text-l">' 
+                            ;   
+           last=                  '<p><small>'+date+'</small></p>' +
+                            '</div>' +
+                        '</div>' +
+                    '</li>';                    
+    setTimeout(
+        function(){     
+           var ms="";
+           ms+=control;                   
+             for( var i=0;i<chunks.length;i++){
+              ms+='<p>'+chunks[i]+'</p>';
+             }
+              ms+=last;
+             $("#chat").append(ms);
+        }, time);
+    
+} 
+
+players={};
+bullets={};
+enemies={};
+socket.on('set_prepare',function(){
+document.getElementById('prepare').innerHTML="Prepare";
+});
+socket.on('start',function(data){
+    console.log('start');
+    gameState=data;
+});
+
+
+socket.on('init',function(data){ 
+      for(var i = 0 ; i < data.player.length; i++){
+      //  console.log(data.player[i].game+" game");
+          if(data.player[i].game!== '{{game.game_name}}') {
+             continue;
+          }
+          players[data.player[i].id]=new PlayTank(tankCtx,data.player[i]);
+      }
+
+    
+        
+        for(var i = 0 ; i < data.enemy.length; i++){
+            //  console.log(data.enemy[i].game+" enmy");
+            if(data.enemy[i].game!== '{{game.game_name}}') {
+               continue;
+            }
+            
+            enemies[data.enemy[i].id]=new Enemy(tankCtx,data.enemy[i]);
+                  // console.log(enemies.length+" enmy");
+        }
+    
+      for(var i = 0 ; i < data.bullet.length; i++){
+          if(data.bullet[i].game !== '{{game.game_name}}'||data.bullet[i]===null) {
+            continue;
+          }
+          bullets[data.bullet[i].id]=new Bullet_local(tankCtx,data.bullet[i]);
+     }
+});
+  
+
+socket.on('mapChangeIndex',function(data){
+   // console.log(data.game+"  "+'{{game.game_name}}  '+data.x+"  "+data.y);
+    if(data.game==='{{game.game_name}}'){
+        map.map[data.x][data.y]=0;
+      //console.log( data.x+" map "+data.y);
+    }
+});
+
+socket.on('update',function(data){
+    //{ player : [{id:123,x:0,y:0},{id:1,x:0,y:0}], bullet: []}
+   for(var i = 0 ; i < data.player.length; i++){
+     // console.log(data.player.length+" length");
+      if(data.player[i].game!== '{{game.game_name}}') continue;
+          var pack = data.player[i];
+          var p = players[pack.id];
+      if(p){
+        if(pack.x !== undefined)
+          p.x = pack.x;
+        if(pack.y !== undefined)
+          p.y = pack.y;
+        if(pack.dir!==undefined)
+          p.dir=pack.dir;
+        if(pack.lives!==undefined){
+          p.lives=pack.lives;
+        }if(pack.protectedTime!==undefined){
+          p.protectedTime=pack.protectedTime; 
+        }
+      }
+    }
+      
+     // console.log(data.enemy.length+" length update enemy "+enemies.length);
+    
+      for(var i = 0 ; i < data.enemy.length; i++){
+          if(data.enemy[i].game!== '{{game.game_name}}') {
+             continue;
+          }
+          
+          var pack = data.enemy[i];
+          var p = enemies[pack.id];
+          if(p){
+            if(pack.x !== undefined)
+              p.x = pack.x;
+            if(pack.y !== undefined)
+              p.y = pack.y;
+            if(pack.dir!==undefined)
+              p.dir=pack.dir;
+          }
+    }
+    for(var i in data.bullet){
+       //  console.log( data.bullet[i].x+" bullets "+ data.bullet[i].y);
+      var pack = data.bullet[i];
+      var b = bullets[pack.id];
+      if(b){
+        // console.log(pack.x+" x");
+        if(pack.x !== undefined)
+          b.x = pack.x;
+        if(pack.y !== undefined)
+          b.y = pack.y;
+        if(pack.dir!==undefined)
+          b.dir=pack.dir;
+      }
+    }
+});
+
+socket.on('remove',function(data){
+       for(var i = 0 ; i < data.bullet.length; i++){
+        delete bullets[data.bullet[i]];
+       }
+
+        for(var i = 0 ; i < data.enemy.length; i++){
+         delete enemies[data.enemy[i]];
+        }
+});
+
+
+socket.on('delete',function(){
+  players={};
+  bullets={};
+  enemies={};
+  gameState=2;
+});
+
+function drawLives(){
+  var order=0;
+  for(var i in players){
+   // console.log(players[i].game+"  "+'{{game.game_name}}')
+    if(players[i].game==='{{game.game_name}}'){
+          order++;
+          if(players[i].lives===0){
+            gameState=GAME_STATE_OVER;
+          }else{
+            map.drawLives(players[i].lives,order);
+          }  
+      }
+      if(order===2){
+        order==0;
+    }
+
+  }
+}
+
+
+</script>
+
+<script src="../js/jquery.min.js"></script>
+<script src="../js/Helper.js"></script>
+<script src="../js/const.js"></script>
+<script src="../js/bullet.js"></script>
+<script src="../js/tank.js"></script>
+<script src="../js/num.js"></script>
+<script src="../js/menu.js"></script>
+<script src="../js/map.js"></script>
+<script src="../js/main.js"></script>
+<script src="../js/keyboard.js"></script>
